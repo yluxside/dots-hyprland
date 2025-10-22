@@ -17,6 +17,15 @@ Singleton {
 	id: root;
 	property MprisPlayer trackedPlayer: null;
 	property MprisPlayer activePlayer: trackedPlayer ?? Mpris.players.values[0] ?? null;
+
+    // Propriedade proxy para o volume do player ativo
+    property real volume: activePlayer?.volume ?? 0
+    onVolumeChanged: {
+        if (activePlayer && canChangeVolume && activePlayer.volume !== volume) {
+            activePlayer.volume = volume;
+        }
+    }
+
 	signal trackChanged(reverse: bool);
 
 	property bool __reverse: false;
@@ -60,6 +69,12 @@ Singleton {
 	Connections {
 		target: activePlayer
 
+        function onVolumeChanged() {
+            if (root.activePlayer && root.activePlayer.volume !== root.volume) {
+                root.volume = root.activePlayer.volume;
+            }
+        }
+
 		function onPostTrackChanged() {
 			root.updateTrack();
 		}
@@ -78,7 +93,14 @@ Singleton {
 		}
 	}
 
-	onActivePlayerChanged: this.updateTrack();
+	onActivePlayerChanged: {
+        this.updateTrack();
+        if (this.activePlayer) {
+            root.volume = this.activePlayer.volume;
+        } else {
+            root.volume = 0;
+        }
+    }
 
 	function updateTrack() {
 		//console.log(`update: ${this.activePlayer?.trackTitle ?? ""} : ${this.activePlayer?.trackArtists}`)
