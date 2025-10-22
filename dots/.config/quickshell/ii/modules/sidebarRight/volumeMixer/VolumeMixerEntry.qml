@@ -13,6 +13,14 @@ Item {
         objects: [node]
     }
 
+    // Spotify
+    property bool isSpotifyNode: {
+        const appName = root.node.properties["application.name"] ?? "";
+        const nodeName = root.node.name ?? "";
+        return appName.toLowerCase().indexOf("spotify") !== -1 ||
+               nodeName.toLowerCase().indexOf("spotify") !== -1;
+    }
+
     implicitHeight: rowLayout.implicitHeight
 
     RowLayout {
@@ -56,8 +64,36 @@ Item {
             StyledSlider {
                 id: slider
                 value: root.node.audio.volume
-                onMoved: root.node.audio.volume = value
                 configuration: StyledSlider.Configuration.S
+
+                // Spotify Pipewire <-> MPRIS
+                onMoved: {
+                    root.node.audio.volume = value;
+                    if (root.isSpotifyNode && MprisController.canChangeVolume) {
+                        if (Math.abs(MprisController.volume - value) > 0.01) {
+                            MprisController.volume = value;
+                        }
+                    }
+                }
+
+                Connections {
+                    target: MprisController
+                    enabled: root.isSpotifyNode
+                    
+                    function onVolumeChanged() {
+                        if (Math.abs(slider.value - MprisController.volume) > 0.01) {
+                            root.node.audio.volume = MprisController.volume;
+                        }
+                    }
+                }
+
+                Component.onCompleted: {
+                    if (root.isSpotifyNode && MprisController.canChangeVolume) {
+                        if (Math.abs(root.node.audio.volume - MprisController.volume) > 0.01) {
+                            root.node.audio.volume = MprisController.volume;
+                        }
+                    }
+                }
             }
         }
     }
